@@ -17,7 +17,7 @@ int main(void)
     int longest = 0;
 
     while (should_run) {
-        printf("osh>");
+        printf("osh> ");
         fflush(stdout);
         int argsIndex = 0;
 
@@ -53,6 +53,15 @@ int main(void)
         // final entry is null for exec command
         args[argsIndex] = nullptr;
         longest = max(longest, argsIndex);
+
+        // check for & at the end
+        bool waitCheck = true;
+        if (strcmp(args[argsIndex - 1], "&") == 0) {
+            cout << "detected ampersand" << endl;
+            args[argsIndex - 1] = nullptr;
+            argsIndex -= 1;
+            waitCheck = false;
+        }
         
         // fork and start running commands
         int rc = fork();
@@ -67,7 +76,7 @@ int main(void)
                     // redirect to fd
                     dup2(fd, STDOUT_FILENO);
 
-                    // remove the redirection part and file
+                    // remove the redirection and file
                     args[i] = nullptr;
                     args[i + 1] = nullptr;
                     break;
@@ -77,7 +86,7 @@ int main(void)
                     // redirect to console
                     dup2(fd, STDIN_FILENO);
 
-                    // remove the redirection part and file
+                    // remove the redirection and file
                     args[i] = nullptr;
                     args[i + 1] = nullptr;
                     break;
@@ -90,7 +99,8 @@ int main(void)
             // so that child doesnt interfere with the parent process
             exit(0);
         } else {
-            if (*args[argsIndex - 1] != '&') {
+            // wait for child to finish
+            if (waitCheck) {
                 wait(NULL);
             }
         }
