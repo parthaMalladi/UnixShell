@@ -57,7 +57,6 @@ int main(void)
         // check for & at the end
         bool waitCheck = true;
         if (strcmp(args[argsIndex - 1], "&") == 0) {
-            cout << "detected ampersand" << endl;
             args[argsIndex - 1] = nullptr;
             argsIndex -= 1;
             waitCheck = false;
@@ -68,6 +67,8 @@ int main(void)
 
         if (rc == 0) {
             int fd;
+            int pipeIndex = -1;
+
             // check for redirection (< or >)
             for (int i = 0; i < argsIndex; i++) {
                 if (*args[i] == '>') {
@@ -90,11 +91,65 @@ int main(void)
                     args[i] = nullptr;
                     args[i + 1] = nullptr;
                     break;
+                } else if (*args[i] == '|') {
+                    pipeIndex = i;
+                    break;
                 }
             }
 
             // exec command
-            execvp(args[0], args);
+            if (pipeIndex != -1) {
+                char *leftCmd[MAX_LINE/2 + 1];
+                char *rightCmd[MAX_LINE/2 + 1];
+                
+                // get left side command
+                for (int i = 0; i < pipeIndex; i++) {
+                    leftCmd[i] = args[i];
+                }
+                leftCmd[pipeIndex] = nullptr; 
+
+                // get right side command
+                int temp = 0;
+                for (int i = pipeIndex + 1; i < argsIndex; i++) {
+                    rightCmd[temp] = args[i];
+                    temp++;
+                }
+                rightCmd[temp] = nullptr;
+
+                // two ends of the pipe
+                int pipeFd[2];
+                pipe(pipeFd);
+
+                // fork and left command
+                int left = fork();
+                if (left == 0) {
+                    close(pipeFd[0]);
+                    dup2(pipeFd[1], STDOUT_FILENO);
+                    close(pipeFd[1]);
+                    execvp(leftCmd[0], leftCmd);
+                    exit(1);
+                }
+
+                // fork and right command
+                int right = fork();
+                if (right == 0) {
+                    close(pipeFd[1]);
+                    dup2(pipeFd[0], STDIN_FILENO);
+                    close(pipeFd[0]);
+                    execvp(rightCmd[0], rightCmd);
+                    exit(1);
+                }
+                
+                // close the pipe in the parent process
+                close(pipeFd[0]);
+                close(pipeFd[1]);
+
+                // wait for children to finish
+                waitpid(left, NULL, 0);
+                waitpid(right, NULL, 0);
+            } else {
+                execvp(args[0], args);
+            }
             
             // so that child doesnt interfere with the parent process
             exit(0);
