@@ -23,6 +23,11 @@ int main(void)
 
         getline(cin, input);
         
+        // check if nothing got inputted
+        if (input.empty()) {
+            continue;
+        }
+        
         // exit if user types 'exit'
         if (input == "exit") {
             should_run = 0;
