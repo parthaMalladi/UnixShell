@@ -57,6 +57,15 @@ int main(void)
         int rc = fork();
 
         if (rc == 0) {
+            // check for redirection (< or >)
+            for (int i = 0; i < argsIndex; i++) {
+                if (*args[i] == '<') {
+
+                } else if (*args[i] == '>') {
+
+                }
+            }
+
             // exec command
             execvp(args[0], args);
             
