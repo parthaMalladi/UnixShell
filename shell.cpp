@@ -12,6 +12,7 @@ int main(void)
     char *args[MAX_LINE/2 + 1]; /* command line arguments */
     int should_run = 1; /* flag to determine when to exit program */
     string input;
+    int longest = 0;
 
     while (should_run) {
         printf("osh>");
@@ -38,12 +39,28 @@ int main(void)
 
         // final entry is null for exec command
         args[argsIndex] = nullptr;
+        longest = max(longest, argsIndex);
 
-        // free allocated memory
-        for (int i = 0; i < argsIndex; i++) {
-            delete[] args[i];
+        // fork and start running commands
+        int rc = fork();
+
+        if (rc == 0) {
+            // exec command
+            execvp(args[0], args);
+
+            // so that child doesnt interfere with the parent process
+            exit(0);
+        } else {
+            if (*args[argsIndex - 1] != '&') {
+                wait(NULL);
+            }
         }
     }
-    
+
+    // free allocated memory
+    for (int i = 0; i < longest; i++) {
+        delete[] args[i];
+    }
+
     return 0;
 }
