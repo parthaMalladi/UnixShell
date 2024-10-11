@@ -12,6 +12,7 @@ int main(void)
     char *args[MAX_LINE/2 + 1]; /* command line arguments */
     int should_run = 1; /* flag to determine when to exit program */
     string input;
+    string lastCommand;
     int longest = 0;
 
     while (should_run) {
@@ -27,6 +28,17 @@ int main(void)
             break;
         }
 
+        // check to see if calling previous command
+        if (input == "!!") {
+            if (lastCommand.empty()) {
+                cout << "No commands in history." << endl;
+                continue;
+            } 
+            input = lastCommand;
+        } else {
+            lastCommand = input;
+        }
+            
         // split into each word and store in args array
         istringstream iss(input);
         string word;
@@ -40,14 +52,14 @@ int main(void)
         // final entry is null for exec command
         args[argsIndex] = nullptr;
         longest = max(longest, argsIndex);
-
+        
         // fork and start running commands
         int rc = fork();
 
         if (rc == 0) {
             // exec command
             execvp(args[0], args);
-
+            
             // so that child doesnt interfere with the parent process
             exit(0);
         } else {
