@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #define MAX_LINE 80 /* The maximum length command */
 
@@ -57,12 +58,29 @@ int main(void)
         int rc = fork();
 
         if (rc == 0) {
+            int fd;
             // check for redirection (< or >)
             for (int i = 0; i < argsIndex; i++) {
-                if (*args[i] == '<') {
+                if (*args[i] == '>') {
+                    fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
-                } else if (*args[i] == '>') {
+                    // redirect to fd
+                    dup2(fd, STDOUT_FILENO);
 
+                    // remove the redirection part and file
+                    args[i] = nullptr;
+                    args[i + 1] = nullptr;
+                    break;
+                } else if (*args[i] == '<') {
+                    fd = open(args[i + 1], O_RDONLY);
+
+                    // redirect to console
+                    dup2(fd, STDIN_FILENO);
+
+                    // remove the redirection part and file
+                    args[i] = nullptr;
+                    args[i + 1] = nullptr;
+                    break;
                 }
             }
 
